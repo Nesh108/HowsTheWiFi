@@ -1,6 +1,7 @@
 package com.kulplex.nesh.howsthewifi;
 
 import android.os.AsyncTask;
+import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -13,6 +14,7 @@ import java.io.InputStreamReader;
 
 public class MainActivity extends AppCompatActivity {
 
+    private TextView pingTextView;
     private TextView downloadTextView;
     private TextView uploadTextView;
 
@@ -21,14 +23,31 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        pingTextView = findViewById(R.id.pingTextView);
         downloadTextView = findViewById(R.id.downloadTextView);
         uploadTextView = findViewById(R.id.uploadTextView);
     }
 
     public void onCheckConnection(View view) {
-        new PingTask().execute();
-        new SpeedTestTask(this, ReportType.DOWNLOAD, 5000).execute();
-        new SpeedTestTask(this, ReportType.UPLOAD, 5000).execute();
+        // Clear the textViews
+        pingTextView.setText("-");
+        downloadTextView.setText("-");
+        uploadTextView.setText("-");
+
+        PingTask pingTask = new PingTask();
+        SpeedTestTask downloadTask = new SpeedTestTask(this, ReportType.DOWNLOAD, 5000);
+        SpeedTestTask uploadTask = new SpeedTestTask(this, ReportType.UPLOAD, 5000);
+
+        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.HONEYCOMB) {
+            pingTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            downloadTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            uploadTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        }
+        else {
+            pingTask.execute();
+            downloadTask.execute();
+            uploadTask.execute();
+        }
     }
 
     public int getPing(String url, int amount) {
