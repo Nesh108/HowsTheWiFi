@@ -26,55 +26,55 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onCheckConnection(View view) {
-        new SpeedTestTask(this, ReportType.DOWNLOAD).execute();
-        new SpeedTestTask(this, ReportType.UPLOAD).execute();
         new PingTask().execute();
+        new SpeedTestTask(this, ReportType.DOWNLOAD, 5000).execute();
+        new SpeedTestTask(this, ReportType.UPLOAD, 5000).execute();
     }
 
-    public int getPing(String url) {
-        String str = "";
+    public int getPing(String url, int amount) {
+        int delay = 0;
+
         try {
             java.lang.Process process = Runtime.getRuntime().exec(
-                    "ping -c 1 " + url);
+                    "ping -c " + amount + " " + url);
             BufferedReader reader = new BufferedReader(new InputStreamReader(
                     process.getInputStream()));
             int i;
             char[] buffer = new char[4096];
             StringBuffer output = new StringBuffer();
             String op[];
-            String delay[];
-            while ((i = reader.read(buffer)) > 0)
+            while ((i = reader.read(buffer)) > 0) {
                 output.append(buffer, 0, i);
+            }
             reader.close();
+
             op = output.toString().split("\n");
-            Log.d("speedtest", output.toString());
-            delay = op[3].split("time ");
-            str = delay[1];
-        } catch (IOException e) {
-            // body.append("Error\n");
-            e.printStackTrace();
+            for(int j=1; j<= amount; j++) {
+                delay += Integer.parseInt(op[j].split("time=")[1].split(" ms")[0]);
+            }
+        } catch (Exception e) {
         }
-        return Integer.parseInt(str.split("ms")[0]);
+        return delay / amount;
     }
 
     private class PingTask extends AsyncTask<Integer, Void, Integer> {
+        TextView pingTextView;
 
+        PingTask() {
+            pingTextView = findViewById(R.id.pingTextView);
+        }
         @Override
         protected Integer doInBackground(Integer... params) {
-            return getPing("www.bing.com");
+            return getPing("google.com", 5);
         }
 
         @Override
         protected void onPostExecute(Integer result) {
-            TextView pingTextView = findViewById(R.id.pingTextView);
             pingTextView.setText(result + "ms");
         }
 
         @Override
         protected void onPreExecute() {}
-
-        @Override
-        protected void onProgressUpdate(Void... values) {}
     }
 
     public void setDownloadText(String s) {

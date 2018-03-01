@@ -11,16 +11,19 @@ public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, S
 
     private MainActivity mainActivity;
     private ReportType reportType;
+    private int maxDuration;
 
-    public SpeedTestTask(MainActivity mainActivity, ReportType rt) {
+    public SpeedTestTask(MainActivity mainActivity, ReportType rt, int maxDuration) {
         reportType = rt;
         this.mainActivity = mainActivity;
+        this.maxDuration = maxDuration;
     }
 
     @Override
     protected SpeedTestReport doInBackground(SpeedTestReport... params) {
 
         SpeedTestSocket speedTestSocket = new SpeedTestSocket();
+
 
         // add a listener to wait for speedtest completion and progress
         speedTestSocket.addSpeedTestListener(new ISpeedTestListener() {
@@ -43,9 +46,9 @@ public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, S
         });
 
         if(reportType == ReportType.DOWNLOAD) {
-            speedTestSocket.startDownload("http://2.testdebit.info/fichiers/1Mo.dat");
+            speedTestSocket.startFixedDownload("http://2.testdebit.info/fichiers/100Mo.dat", maxDuration);
         } else {
-            speedTestSocket.startUpload("http://2.testdebit.info/", 1000000);
+            speedTestSocket.startFixedUpload("http://2.testdebit.info/", 1000000, maxDuration);
         }
 
         return null;
