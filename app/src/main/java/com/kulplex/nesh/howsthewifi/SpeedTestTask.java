@@ -24,7 +24,6 @@ public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, S
 
         SpeedTestSocket speedTestSocket = new SpeedTestSocket();
 
-
         // add a listener to wait for speedtest completion and progress
         speedTestSocket.addSpeedTestListener(new ISpeedTestListener() {
 
@@ -46,9 +45,11 @@ public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, S
         });
 
         if(reportType == ReportType.DOWNLOAD) {
+            speedTestSocket.setDownloadSetupTime(1000);
             speedTestSocket.startFixedDownload("http://2.testdebit.info/fichiers/100Mo.dat", maxDuration);
         } else {
-            speedTestSocket.startFixedUpload("http://2.testdebit.info/", 1000000, maxDuration);
+            speedTestSocket.setUploadSetupTime(1000);
+            speedTestSocket.startFixedUpload("http://2.testdebit.info/", 100000000, maxDuration);
         }
 
         return null;
