@@ -110,7 +110,6 @@ public class MainActivity extends AppCompatActivity {
                 packetLossTextView.setText(result[1] + "%");
             }
             else {
-                Log.e("xxxxxxxxxxxxxxxxxxx", "" + result[1]);
                 packetLossTextView.setText("N/A");
             }
         }
