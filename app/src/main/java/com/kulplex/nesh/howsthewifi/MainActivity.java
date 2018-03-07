@@ -54,34 +54,36 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public Integer[] getPing(String url, int amount, int maxDuration) {
-        int delay = -1;
-        int packetLoss = -1;
-
+    public Float[] getPing(String url, int amount, int maxDuration) {
+        float delay = -1;
+        float packetLoss = -1;
+        StringBuffer output = new StringBuffer();
         try {
             java.lang.Process process = Runtime.getRuntime().exec(
                     "ping -w " + maxDuration + " -c " + amount + " " + url);
             BufferedReader reader = new BufferedReader(new InputStreamReader(
                     process.getInputStream()));
-            int i;
+            int idx;
             char[] buffer = new char[4096];
-            StringBuffer output = new StringBuffer();
-            while ((i = reader.read(buffer)) > 0) {
-                output.append(buffer, 0, i);
+            while ((idx = reader.read(buffer)) > 0) {
+                output.append(buffer, 0, idx);
             }
             reader.close();
             String op[] = output.toString().split("\n");
-            for(int j=1; j<= amount; j++) {
-                delay += Integer.parseInt(op[j].split("time=")[1].split(" ms")[0]);
+            for(int j=0; j < op.length; j++) {
+                if(op[j].contains("time=")) {
+                    delay += Float.parseFloat(op[j].split("time=")[1].split(" ms")[0]);
+                } else if(op[j].contains("received, ")) {
+                    packetLoss = Float.parseFloat(op[j].split("received, ")[1].split("%")[0]);
+                }
             }
-            packetLoss = Integer.parseInt(op[op.length-2].split("received, ")[1].split("%")[0]);
         } catch (Exception e) {
-            return new Integer[]{delay/amount, packetLoss};
+            return new Float[]{delay/amount, packetLoss};
         }
-        return new Integer[]{delay / amount, packetLoss};
+        return new Float[]{delay / amount, packetLoss};
     }
 
-    private class PingTask extends AsyncTask<Integer, Void, Integer[]> {
+    private class PingTask extends AsyncTask<Float, Void, Float[]> {
         TextView pingTextView;
         int maxDuration;
         int amountPing;
@@ -93,12 +95,12 @@ public class MainActivity extends AppCompatActivity {
             this.amountPing = amountPing;
         }
         @Override
-        protected Integer[] doInBackground(Integer... params) {
+        protected Float[] doInBackground(Float... params) {
             return getPing("google.com", amountPing, maxDuration);
         }
 
         @Override
-        protected void onPostExecute(Integer[] result) {
+        protected void onPostExecute(Float[] result) {
             if(result[0] >= 0){
                 pingTextView.setText(result[0] + "ms");
             }
@@ -107,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if(result[1] >= 0){
-                packetLossTextView.setText(result[1] + "%");
+                packetLossTextView.setText(result[1].intValue() + "%");
             }
             else {
                 packetLossTextView.setText("N/A");

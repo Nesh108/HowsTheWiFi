@@ -76,7 +76,6 @@ public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, S
 
     @Override
     protected void onProgressUpdate(SpeedTestReport... reports) {
-        Log.d("kkaka", reports[0].getTransferRateBit().floatValue() * 0.001f + "Kb/s");
         String reportText = round(reports[0].getTransferRateBit().floatValue() * 0.001f, 1) + "Kb/s";
         if(reportType == ReportType.DOWNLOAD) {
             mainActivity.setDownloadText(reportText);
