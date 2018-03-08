@@ -3,8 +3,7 @@ package com.kulplex.nesh.howsthewifi;
 import android.Manifest;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
+import android.graphics.Paint;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -46,12 +45,14 @@ public class MainActivity extends AppCompatActivity {
     private TextView packetLossLabel;
     private TextView downloadLabel;
     private TextView uploadLabel;
+    private TextView addressLabel;
 
     private Button checkConnectionBtn;
 
     private ReportStatus pingTaskStatus;
     private ReportStatus downloadTaskStatus;
     private ReportStatus uploadTaskStatus;
+    private ReportStatus addressTaskStatus;
 
     private LocationRequest mLocationRequest;
     private Location mLastLocation;
@@ -66,14 +67,15 @@ public class MainActivity extends AppCompatActivity {
         packetLossTextView = findViewById(R.id.packetLossTextView);
         downloadTextView = findViewById(R.id.downloadTextView);
         uploadTextView = findViewById(R.id.uploadTextView);
+        addressTextView  = findViewById(R.id.addressTextView);
+
         checkConnectionBtn = findViewById(R.id.checkConnectionButton);
 
         pingLabel = findViewById(R.id.pingLabel);
         packetLossLabel = findViewById(R.id.packetLossLabel);
         uploadLabel = findViewById(R.id.uploadLabel);
         downloadLabel = findViewById(R.id.downloadLabel);
-
-        addressTextView  = findViewById(R.id.addressTextView);
+        addressLabel = findViewById(R.id.addressLabel);
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
     }
@@ -81,31 +83,35 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onPause() {
         super.onPause();
-//
-//        //stop location updates when Activity is no longer active
-//        if (mFusedLocationClient != null) {
-//            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-//        }
+
+        if (mFusedLocationClient != null) {
+            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+            mLocationRequest = null;
+        }
     }
 
     public void onCheckConnection(View view) {
         checkConnectionBtn.setEnabled(false);
 
-        pingLabel.setTextColor(Color.GRAY);
-        packetLossLabel.setTextColor(Color.GRAY);
-        downloadLabel.setTextColor(Color.GRAY);
-        uploadLabel.setTextColor(Color.GRAY);
+        pingLabel.setTextColor(getColor(R.color.colorTextDefault));
+        packetLossLabel.setTextColor(getColor(R.color.colorTextDefault));
+        downloadLabel.setTextColor(getColor(R.color.colorTextDefault));
+        uploadLabel.setTextColor(getColor(R.color.colorTextDefault));
+        addressLabel.setTextColor(getColor(R.color.colorTextDefault));
+        addressTextView.setPaintFlags(addressTextView.getPaintFlags() & (~Paint.UNDERLINE_TEXT_FLAG));
 
         // Setting tasks flags
         pingTaskStatus = ReportStatus.IN_PROGRESS;
         downloadTaskStatus = ReportStatus.IN_PROGRESS;
         uploadTaskStatus = ReportStatus.IN_PROGRESS;
+        addressTaskStatus = ReportStatus.IN_PROGRESS;
 
         // Clear the textViews
         pingTextView.setText("-");
         packetLossTextView.setText("-");
         downloadTextView.setText("-");
         uploadTextView.setText("-");
+        addressTextView.setText("-");
 
         PingTask pingTask = new PingTask(5, 5);
         SpeedTestTask downloadTask = new SpeedTestTask(this, ReportType.DOWNLOAD, 8000);
@@ -122,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
             uploadTask.execute();
         }
         if (mLocationRequest == null) {
-            setupLocationManager(10000);
+            setupLocationManager(1000);
         }
     }
 
@@ -212,6 +218,10 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case DOWNLOAD:
                 downloadTaskStatus = reportStatus;
+                break;
+            case GPS:
+                addressTaskStatus = reportStatus;
+                break;
         }
 
         runOnUiThread(new Runnable() {
@@ -224,32 +234,27 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkSpeedTestCompleted() {
         if (pingTaskStatus != ReportStatus.IN_PROGRESS) {
-            pingLabel.setTextColor(pingTaskStatus == ReportStatus.COMPLETED ? Color.GREEN: Color.RED);
-            packetLossLabel.setTextColor(pingTaskStatus == ReportStatus.COMPLETED ? Color.GREEN: Color.RED);
+            pingLabel.setTextColor(pingTaskStatus == ReportStatus.COMPLETED ? getColor(R.color.colorTaskSuccess): getColor(R.color.colorTaskAllowedFailure));
+            packetLossLabel.setTextColor(pingTaskStatus == ReportStatus.COMPLETED ? getColor(R.color.colorTaskSuccess): getColor(R.color.colorTaskAllowedFailure));
         }
 
         if (downloadTaskStatus != ReportStatus.IN_PROGRESS) {
-            downloadLabel.setTextColor(downloadTaskStatus == ReportStatus.COMPLETED ? Color.GREEN: Color.RED);
+            downloadLabel.setTextColor(downloadTaskStatus == ReportStatus.COMPLETED ? getColor(R.color.colorTaskSuccess): getColor(R.color.colorTaskFailure));
         }
 
         if (uploadTaskStatus != ReportStatus.IN_PROGRESS) {
-            uploadLabel.setTextColor(uploadTaskStatus == ReportStatus.COMPLETED ? Color.GREEN : Color.RED);
+            uploadLabel.setTextColor(uploadTaskStatus == ReportStatus.COMPLETED ? getColor(R.color.colorTaskSuccess): getColor(R.color.colorTaskFailure));
+        }
+
+        if (addressTaskStatus != ReportStatus.IN_PROGRESS) {
+            addressLabel.setTextColor(addressTaskStatus == ReportStatus.COMPLETED ? getColor(R.color.colorTaskSuccess): getColor(R.color.colorTaskFailure));
         }
 
         if (pingTaskStatus != ReportStatus.IN_PROGRESS &&
                 downloadTaskStatus != ReportStatus.IN_PROGRESS &&
-                uploadTaskStatus != ReportStatus.IN_PROGRESS) {
+                uploadTaskStatus != ReportStatus.IN_PROGRESS &&
+                addressTaskStatus != ReportStatus.IN_PROGRESS) {
             checkConnectionBtn.setEnabled(true);
-
-            if(mLastLocation == null) {
-                Geocoder geocoder = new Geocoder(getBaseContext(), Locale.getDefault());
-                try {
-                    List<Address> addresses = geocoder.getFromLocation(3.202778d, 73.22068000000002d, 1);
-                    addressTextView.setText(addresses.get(0).getAddressLine(0) + ", " + addresses.get(0).getCountryName());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 
@@ -257,7 +262,7 @@ public class MainActivity extends AppCompatActivity {
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(intervalUpdate); // two minute interval
         mLocationRequest.setFastestInterval(intervalUpdate);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this,
@@ -279,18 +284,23 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 for (Location location : locationResult.getLocations()) {
-                    Log.i("MapsActivity", "Location: " + location.getLatitude() + "," + location.getLongitude());
+                    Log.e("MapsActivity", "Location: " + location.getLatitude() + "," + location.getLongitude());
                     Geocoder geocoder = new Geocoder(getBaseContext(), Locale.getDefault());
                     try {
                         List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-                        addressTextView.setText(addresses.get(0).getAddressLine(0) + ", " + addresses.get(0).getCountryName());
+                        if(addresses.size() > 0) {
+                            setTextViewAddress(addresses.get(0));
+                        } else {
+                            setTextViewAddress(location);
+                        }
+                        setReportStatus(ReportType.GPS, ReportStatus.COMPLETED);
                     } catch (IOException e) {
                         e.printStackTrace();
+                        setReportStatus(ReportType.GPS, ReportStatus.FAILED);
                     }
                     mLastLocation = location;
                 }
-            };
-
+            }
         };
 
         public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
@@ -353,6 +363,8 @@ public class MainActivity extends AppCompatActivity {
                         // permission denied, boo! Disable the
                         // functionality that depends on this permission.
                         Toast.makeText(this, "permission denied", Toast.LENGTH_LONG).show();
+                        mLocationRequest = null;
+                        setReportStatus(ReportType.GPS, ReportStatus.FAILED);
                     }
                     return;
                 }
@@ -360,6 +372,17 @@ public class MainActivity extends AppCompatActivity {
                 // other 'case' lines to check for other
                 // permissions this app might request
             }
+        }
 
+        private void setTextViewAddress(Address address) {
+            addressTextView.setPaintFlags(addressTextView.getPaintFlags() | (Paint.UNDERLINE_TEXT_FLAG));
+            addressTextView.setTextSize(16);
+            addressTextView.setText(address.getAddressLine(0) + ", " + address.getCountryName());
+        }
+
+        private void setTextViewAddress(Location location) {
+            addressTextView.setPaintFlags(addressTextView.getPaintFlags() | (Paint.UNDERLINE_TEXT_FLAG));
+            addressTextView.setTextSize(24);
+            addressTextView.setText("(" + location.getLatitude() + "," + location.getLongitude() + ")");
         }
 }

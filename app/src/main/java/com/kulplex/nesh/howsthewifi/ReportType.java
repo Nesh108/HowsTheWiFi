@@ -7,5 +7,6 @@ package com.kulplex.nesh.howsthewifi;
 public enum ReportType {
     DOWNLOAD,
     UPLOAD,
-    PING
+    PING,
+    GPS
 }

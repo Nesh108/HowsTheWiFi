@@ -3,4 +3,9 @@
     <color name="colorPrimary">#3F51B5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
+    <color name="colorTaskSuccess">#73E411</color>
+    <color name="colorTaskFailure">#E41C11</color>
+    <color name="colorTaskAllowedFailure">#d6cf03</color>
+    <color name="colorTextDefault">#dadada</color>
+    <color name="colorBackground">#282c26</color>
 </resources>

@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">HowsTheWiFi</string>
+    <string name="default_empty">-</string>
+    <string name="check_connection">Check Connection</string>
+    <string name="download">Download</string>
+    <string name="upload">Upload</string>
+    <string name="ping">Ping</string>
+    <string name="packet_loss">Packet Loss</string>
+    <string name="address">Address</string>
 </resources>
