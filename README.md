@@ -20,6 +20,6 @@ This a utility app for uploading and sharing the WiFi speed when travelling to n
 ## Watch Us Code Live
 The creation of this project was streamed on DesPair Programming. 
 
-You can watch on Twitch (https://www.twitch.tv/nesh108) or YouTube (https://www.youtube.com/channel/UCWzsE0j2eI21rGQG5PZNPqg). 
+You can watch on [Twitch](https://www.twitch.tv/nesh108) or [YouTube](https://www.youtube.com/channel/UCWzsE0j2eI21rGQG5PZNPqg).
 
 Tune in to watch live on Twitch every Wednesday.
