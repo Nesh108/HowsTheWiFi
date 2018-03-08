@@ -12,9 +12,14 @@ This a utility app for uploading and sharing the WiFi speed when travelling to n
 * [JSpeedTest](https://github.com/bertrandmartel/speed-test-lib) - Library for checking internet speed on Android
 
 ## Current Features
-* Checks ping speed and package loss
+* Checks ping speed and packet loss
 * Checks upload speed
 * Checks download speed
+* Get GPS location and address (by reverse geocoding)
 
-## Watch Us Code
-The creation of this project was streamed by DesPair Programming. You can watch on Twitch (https://www.twitch.tv/nesh108) or YouTube (https://www.youtube.com/channel/UCWzsE0j2eI21rGQG5PZNPqg). Tune in to watch live on Twitch every Wednesday.
+## Watch Us Code Live
+The creation of this project was streamed on DesPair Programming. 
+
+You can watch on Twitch (https://www.twitch.tv/nesh108) or YouTube (https://www.youtube.com/channel/UCWzsE0j2eI21rGQG5PZNPqg). 
+
+Tune in to watch live on Twitch every Wednesday.
