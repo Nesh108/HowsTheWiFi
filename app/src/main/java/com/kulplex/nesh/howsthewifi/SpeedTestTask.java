@@ -34,12 +34,13 @@ public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, S
 
             @Override
             public void onCompletion(SpeedTestReport report) {
-
+                mainActivity.setReportStatus(reportType, ReportStatus.COMPLETED);
             }
 
             @Override
             public void onError(SpeedTestError speedTestError, String errorMessage) {
                 Log.e("speedtest", errorMessage);
+                mainActivity.setReportStatus(reportType, ReportStatus.FAILED);
             }
 
             @Override

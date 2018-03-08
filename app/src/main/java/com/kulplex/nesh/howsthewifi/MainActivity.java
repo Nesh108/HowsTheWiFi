@@ -1,17 +1,38 @@
 package com.kulplex.nesh.howsthewifi;
 
+import android.Manifest;
+import android.content.DialogInterface;
+import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Looper;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,6 +40,22 @@ public class MainActivity extends AppCompatActivity {
     private TextView packetLossTextView;
     private TextView downloadTextView;
     private TextView uploadTextView;
+    private TextView addressTextView;
+
+    private TextView pingLabel;
+    private TextView packetLossLabel;
+    private TextView downloadLabel;
+    private TextView uploadLabel;
+
+    private Button checkConnectionBtn;
+
+    private ReportStatus pingTaskStatus;
+    private ReportStatus downloadTaskStatus;
+    private ReportStatus uploadTaskStatus;
+
+    private LocationRequest mLocationRequest;
+    private Location mLastLocation;
+    private FusedLocationProviderClient mFusedLocationClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,9 +66,41 @@ public class MainActivity extends AppCompatActivity {
         packetLossTextView = findViewById(R.id.packetLossTextView);
         downloadTextView = findViewById(R.id.downloadTextView);
         uploadTextView = findViewById(R.id.uploadTextView);
+        checkConnectionBtn = findViewById(R.id.checkConnectionButton);
+
+        pingLabel = findViewById(R.id.pingLabel);
+        packetLossLabel = findViewById(R.id.packetLossLabel);
+        uploadLabel = findViewById(R.id.uploadLabel);
+        downloadLabel = findViewById(R.id.downloadLabel);
+
+        addressTextView  = findViewById(R.id.addressTextView);
+
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+//
+//        //stop location updates when Activity is no longer active
+//        if (mFusedLocationClient != null) {
+//            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+//        }
     }
 
     public void onCheckConnection(View view) {
+        checkConnectionBtn.setEnabled(false);
+
+        pingLabel.setTextColor(Color.GRAY);
+        packetLossLabel.setTextColor(Color.GRAY);
+        downloadLabel.setTextColor(Color.GRAY);
+        uploadLabel.setTextColor(Color.GRAY);
+
+        // Setting tasks flags
+        pingTaskStatus = ReportStatus.IN_PROGRESS;
+        downloadTaskStatus = ReportStatus.IN_PROGRESS;
+        uploadTaskStatus = ReportStatus.IN_PROGRESS;
+
         // Clear the textViews
         pingTextView.setText("-");
         packetLossTextView.setText("-");
@@ -51,6 +120,9 @@ public class MainActivity extends AppCompatActivity {
             pingTask.execute();
             downloadTask.execute();
             uploadTask.execute();
+        }
+        if (mLocationRequest == null) {
+            setupLocationManager(10000);
         }
     }
 
@@ -103,9 +175,11 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(Float[] result) {
             if(result[0] >= 0){
                 pingTextView.setText(result[0] + "ms");
+                setReportStatus(ReportType.PING, ReportStatus.COMPLETED);
             }
             else {
                 pingTextView.setText("N/A");
+                setReportStatus(ReportType.PING, ReportStatus.FAILED);
             }
 
             if(result[1] >= 0){
@@ -127,4 +201,165 @@ public class MainActivity extends AppCompatActivity {
     public void setUploadText(String s) {
         uploadTextView.setText(s);
     }
+
+    public void setReportStatus(ReportType reportType, ReportStatus reportStatus) {
+        switch (reportType) {
+            case PING:
+                pingTaskStatus = reportStatus;
+                break;
+            case UPLOAD:
+                uploadTaskStatus = reportStatus;
+                break;
+            case DOWNLOAD:
+                downloadTaskStatus = reportStatus;
+        }
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                checkSpeedTestCompleted();
+            }
+        });
+    }
+
+    private void checkSpeedTestCompleted() {
+        if (pingTaskStatus != ReportStatus.IN_PROGRESS) {
+            pingLabel.setTextColor(pingTaskStatus == ReportStatus.COMPLETED ? Color.GREEN: Color.RED);
+            packetLossLabel.setTextColor(pingTaskStatus == ReportStatus.COMPLETED ? Color.GREEN: Color.RED);
+        }
+
+        if (downloadTaskStatus != ReportStatus.IN_PROGRESS) {
+            downloadLabel.setTextColor(downloadTaskStatus == ReportStatus.COMPLETED ? Color.GREEN: Color.RED);
+        }
+
+        if (uploadTaskStatus != ReportStatus.IN_PROGRESS) {
+            uploadLabel.setTextColor(uploadTaskStatus == ReportStatus.COMPLETED ? Color.GREEN : Color.RED);
+        }
+
+        if (pingTaskStatus != ReportStatus.IN_PROGRESS &&
+                downloadTaskStatus != ReportStatus.IN_PROGRESS &&
+                uploadTaskStatus != ReportStatus.IN_PROGRESS) {
+            checkConnectionBtn.setEnabled(true);
+
+            if(mLastLocation == null) {
+                Geocoder geocoder = new Geocoder(getBaseContext(), Locale.getDefault());
+                try {
+                    List<Address> addresses = geocoder.getFromLocation(3.202778d, 73.22068000000002d, 1);
+                    addressTextView.setText(addresses.get(0).getAddressLine(0) + ", " + addresses.get(0).getCountryName());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void setupLocationManager(int intervalUpdate) {
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(intervalUpdate); // two minute interval
+        mLocationRequest.setFastestInterval(intervalUpdate);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED) {
+                //Location Permission already granted
+                mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper());
+            } else {
+                //Request Location Permission
+                checkLocationPermission();
+            }
+        }
+        else {
+            mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper());
+        }
+    }
+
+        LocationCallback mLocationCallback = new LocationCallback(){
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                for (Location location : locationResult.getLocations()) {
+                    Log.i("MapsActivity", "Location: " + location.getLatitude() + "," + location.getLongitude());
+                    Geocoder geocoder = new Geocoder(getBaseContext(), Locale.getDefault());
+                    try {
+                        List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+                        addressTextView.setText(addresses.get(0).getAddressLine(0) + ", " + addresses.get(0).getCountryName());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    mLastLocation = location;
+                }
+            };
+
+        };
+
+        public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
+        private void checkLocationPermission() {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED) {
+
+                // Should we show an explanation?
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.ACCESS_FINE_LOCATION)) {
+
+                    // Show an explanation to the user *asynchronously* -- don't block
+                    // this thread waiting for the user's response! After the user
+                    // sees the explanation, try again to request the permission.
+                    new AlertDialog.Builder(this)
+                            .setTitle("Location Permission Needed")
+                            .setMessage("This app needs the Location permission, please accept to use location functionality")
+                            .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    //Prompt the user once explanation has been shown
+                                    ActivityCompat.requestPermissions(MainActivity.this,
+                                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                                            MY_PERMISSIONS_REQUEST_LOCATION );
+                                }
+                            })
+                            .create()
+                            .show();
+
+
+                } else {
+                    // No explanation needed, we can request the permission.
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                            MY_PERMISSIONS_REQUEST_LOCATION );
+                }
+            }
+        }
+
+        @Override
+        public void onRequestPermissionsResult(int requestCode,
+                                               String permissions[], int[] grantResults) {
+            switch (requestCode) {
+                case MY_PERMISSIONS_REQUEST_LOCATION: {
+                    // If request is cancelled, the result arrays are empty.
+                    if (grantResults.length > 0
+                            && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                        // permission was granted, yay! Do the
+                        // location-related task you need to do.
+                        if (ContextCompat.checkSelfPermission(this,
+                                Manifest.permission.ACCESS_FINE_LOCATION)
+                                == PackageManager.PERMISSION_GRANTED) {
+
+                            mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper());
+                        }
+
+                    } else {
+
+                        // permission denied, boo! Disable the
+                        // functionality that depends on this permission.
+                        Toast.makeText(this, "permission denied", Toast.LENGTH_LONG).show();
+                    }
+                    return;
+                }
+
+                // other 'case' lines to check for other
+                // permissions this app might request
+            }
+
+        }
 }

@@ -26,4 +26,6 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     compile 'fr.bmartel:jspeedtest:1.31.3'
+    compile 'com.google.android.gms:play-services-maps:11.0.2'
+    compile 'com.google.android.gms:play-services-location:11.0.2'
 }
