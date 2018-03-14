@@ -2,6 +2,7 @@ package com.kulplex.nesh.howsthewifi;
 
 import android.Manifest;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Paint;
 import android.location.Address;
@@ -17,6 +18,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -30,6 +32,7 @@ import com.google.android.gms.location.LocationServices;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -75,6 +78,9 @@ public class MainActivity extends AppCompatActivity
                     {
                         setTextViewAddress(location);
                     }
+                    Log.e("speedtest", "" + new Date(location.getTime()).toString());
+                    Log.e("speedtest", "" + location.getAccuracy() + "m");
+
                     setReportStatus(ReportType.GPS, ReportStatus.COMPLETED);
                 } catch (IOException e)
                 {
@@ -85,6 +91,18 @@ public class MainActivity extends AppCompatActivity
             }
         }
     };
+
+    public void onClickAddress()
+    {
+        if(addressTaskStatus.equals(ReportStatus.COMPLETED))
+        {
+            Intent intent = new Intent(this, MapsActivity.class);
+            intent.putExtra("lat", mLastLocation.getLatitude());
+            intent.putExtra("long", mLastLocation.getLongitude());
+            intent.putExtra("address", addressTextView.getText());
+            startActivity(intent);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -97,6 +115,12 @@ public class MainActivity extends AppCompatActivity
         downloadTextView = findViewById(R.id.downloadTextView);
         uploadTextView = findViewById(R.id.uploadTextView);
         addressTextView = findViewById(R.id.addressTextView);
+        addressTextView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onClickAddress();
+            }
+        });
 
         checkConnectionBtn = findViewById(R.id.checkConnectionButton);
 
@@ -436,6 +460,7 @@ public class MainActivity extends AppCompatActivity
         @Override
         protected void onPreExecute()
         {
+
         }
     }
 }
