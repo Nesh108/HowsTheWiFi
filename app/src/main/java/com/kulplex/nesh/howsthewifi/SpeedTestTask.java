@@ -94,20 +94,14 @@ public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, S
     @Override
     protected void onProgressUpdate(SpeedTestReport... reports)
     {
-        String reportText = round(reports[0].getTransferRateBit().floatValue() * 0.001f,
-                                  1) + "Kb/s";
         if (reportType == ReportType.DOWNLOAD)
         {
-            mainActivity.setDownloadText(reportText);
+            mainActivity.setDownloadText(reports[0].getTransferRateBit().floatValue());
         } else
         {
-            mainActivity.setUploadText(reportText);
+            mainActivity.setUploadText(reports[0].getTransferRateBit().floatValue());
         }
     }
 
-    protected float round(float value, int precision)
-    {
-        float prec = 10 * precision;
-        return (int) (value * prec) / (prec);
-    }
+
 }

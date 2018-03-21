@@ -7,5 +7,6 @@
     <string name="ping">Ping</string>
     <string name="packet_loss">Packet Loss</string>
     <string name="address">Address</string>
+    <string name="send">Send</string>
     <string name="title_activity_maps">Map</string>
 </resources>

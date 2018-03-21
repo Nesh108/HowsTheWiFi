@@ -1,6 +1,7 @@
 package com.kulplex.nesh.howsthewifi;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -18,7 +19,6 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,6 +28,9 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.JsonHttpResponseHandler;
+import com.loopj.android.http.RequestParams;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -35,6 +38,11 @@ import java.io.InputStreamReader;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import cz.msebera.android.httpclient.Header;
 
 public class MainActivity extends AppCompatActivity
 {
@@ -50,11 +58,17 @@ public class MainActivity extends AppCompatActivity
     private TextView uploadLabel;
     private TextView addressLabel;
     private Button checkConnectionBtn;
+    private Button sendBtn;
     private ReportStatus pingTaskStatus;
     private ReportStatus downloadTaskStatus;
     private ReportStatus uploadTaskStatus;
     private ReportStatus addressTaskStatus;
     private LocationRequest mLocationRequest;
+    // Form data
+    private float downloadValue;
+    private float uploadValue;
+    private float pingValue;
+    private int packetLossValue;
     private Location mLastLocation;
     private FusedLocationProviderClient mFusedLocationClient;
     LocationCallback mLocationCallback = new LocationCallback()
@@ -94,7 +108,7 @@ public class MainActivity extends AppCompatActivity
 
     public void onClickAddress()
     {
-        if(addressTaskStatus.equals(ReportStatus.COMPLETED))
+        if (addressTaskStatus.equals(ReportStatus.COMPLETED))
         {
             Intent intent = new Intent(this, MapsActivity.class);
             intent.putExtra("lat", mLastLocation.getLatitude());
@@ -115,14 +129,17 @@ public class MainActivity extends AppCompatActivity
         downloadTextView = findViewById(R.id.downloadTextView);
         uploadTextView = findViewById(R.id.uploadTextView);
         addressTextView = findViewById(R.id.addressTextView);
-        addressTextView.setOnClickListener(new View.OnClickListener() {
+        addressTextView.setOnClickListener(new View.OnClickListener()
+        {
             @Override
-            public void onClick(View v) {
+            public void onClick(View v)
+            {
                 onClickAddress();
             }
         });
 
         checkConnectionBtn = findViewById(R.id.checkConnectionButton);
+        sendBtn = findViewById(R.id.sendBtn);
 
         pingLabel = findViewById(R.id.pingLabel);
         packetLossLabel = findViewById(R.id.packetLossLabel);
@@ -145,9 +162,66 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    public void onSend(View view)
+    {
+        if (pingValue == -1)
+        {
+            pingValue = 0;
+        }
+        if (packetLossValue == -1)
+        {
+            packetLossValue = 100;
+        }
+
+        if (downloadValue >= 0 && uploadValue >= 0)
+        {
+            AsyncHttpClient client = new AsyncHttpClient();
+            RequestParams params = new RequestParams();
+            params.put("latitude", mLastLocation.getLatitude());
+            params.put("longitude", mLastLocation.getLongitude());
+            params.put("accuracy", mLastLocation.getAccuracy());
+            params.put("download", downloadValue);
+            params.put("upload", uploadValue);
+            params.put("ping", pingValue);
+            params.put("packet_loss", packetLossValue);
+            params.put("name", "Hotel Last Vegas");
+            params.put("comments", "Viva los sweetos indianos");
+
+            client.post("http://192.168.100.12:8000/api/wifispeed/create", params,
+                        new JsonHttpResponseHandler()
+                        {
+                            @Override
+                            public void onSuccess(int statusCode, Header[] headers, JSONObject response)
+                            {
+                                // If the response is JSONObject instead of expected JSONArray
+                                try
+                                {
+                                    Toast.makeText(getBaseContext(), "Successful: " + response.get(
+                                            "wifispeed").toString(), Toast.LENGTH_SHORT).show();
+                                } catch (JSONException e)
+                                {
+                                    Toast.makeText(getBaseContext(), "Not so successful, eh?",
+                                                   Toast.LENGTH_SHORT).show();
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse)
+                            {
+                                Toast.makeText(getBaseContext(), "Failure :( : " + throwable.toString(), Toast.LENGTH_LONG).show();
+                                Log.d("wifispeeds", throwable.toString());
+                            }
+                        });
+        } else
+        {
+            Toast.makeText(this, "Something is not correct", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     public void onCheckConnection(View view)
     {
         checkConnectionBtn.setEnabled(false);
+        sendBtn.setEnabled(false);
 
         pingLabel.setTextColor(getColor(R.color.colorTextDefault));
         packetLossLabel.setTextColor(getColor(R.color.colorTextDefault));
@@ -227,14 +301,22 @@ public class MainActivity extends AppCompatActivity
         return new Float[]{delay / amount, packetLoss};
     }
 
-    public void setDownloadText(String s)
+    public void setDownloadText(float f)
     {
-        downloadTextView.setText(s);
+        downloadValue = f;
+        downloadTextView.setText(round(f * 0.001f, 1) + "Kb/s");
     }
 
-    public void setUploadText(String s)
+    public void setUploadText(float f)
     {
-        uploadTextView.setText(s);
+        uploadValue = f;
+        uploadTextView.setText(round(f * 0.001f, 1) + "Kb/s");
+    }
+
+    protected float round(float value, int precision)
+    {
+        float prec = 10 * precision;
+        return (int) (value * prec) / (prec);
     }
 
     public void setReportStatus(ReportType reportType, ReportStatus reportStatus)
@@ -296,6 +378,10 @@ public class MainActivity extends AppCompatActivity
         if (pingTaskStatus != ReportStatus.IN_PROGRESS && downloadTaskStatus != ReportStatus.IN_PROGRESS && uploadTaskStatus != ReportStatus.IN_PROGRESS && addressTaskStatus != ReportStatus.IN_PROGRESS)
         {
             checkConnectionBtn.setEnabled(true);
+            if (downloadTaskStatus == ReportStatus.COMPLETED && uploadTaskStatus == ReportStatus.COMPLETED && addressTaskStatus == ReportStatus.COMPLETED)
+            {
+                sendBtn.setEnabled(true);
+            }
         }
     }
 
@@ -441,19 +527,23 @@ public class MainActivity extends AppCompatActivity
             if (result[0] >= 0)
             {
                 pingTextView.setText(result[0] + "ms");
+                pingValue = result[0];
                 setReportStatus(ReportType.PING, ReportStatus.COMPLETED);
             } else
             {
                 pingTextView.setText("N/A");
+                pingValue = -1f;
                 setReportStatus(ReportType.PING, ReportStatus.FAILED);
             }
 
             if (result[1] >= 0)
             {
                 packetLossTextView.setText(result[1].intValue() + "%");
+                packetLossValue = result[1].intValue();
             } else
             {
                 packetLossTextView.setText("N/A");
+                packetLossValue = -1;
             }
         }
 

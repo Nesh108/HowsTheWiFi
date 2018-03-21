@@ -9,6 +9,7 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        multiDexEnabled true
     }
     buildTypes {
         release {
@@ -29,4 +30,5 @@ dependencies {
     compile 'fr.bmartel:jspeedtest:1.31.3'
     compile 'com.google.android.gms:play-services-maps:11.0.2'
     compile 'com.google.android.gms:play-services-location:11.0.2'
+    compile "cz.msebera.android:httpclient:4.4.1.2"
 }
