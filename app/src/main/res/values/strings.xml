@@ -8,6 +8,9 @@
     <string name="packet_loss">Packet Loss</string>
     <string name="address">Address</string>
     <string name="send">Send</string>
+    <string name="title_activity_main">WiFi Speeds</string>
     <string name="title_activity_maps">Map</string>
+    <string name="title_activity_settings">Settings</string>
     <string name="post_api_url">http://192.168.100.12:8000/api/wifispeed/create</string>
+    <string name="get_api_url">http://192.168.100.12:8000/api/wifispeed/</string>
 </resources>

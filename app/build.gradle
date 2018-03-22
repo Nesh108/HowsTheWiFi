@@ -31,4 +31,5 @@ dependencies {
     compile 'com.google.android.gms:play-services-maps:11.0.2'
     compile 'com.google.android.gms:play-services-location:11.0.2'
     compile "cz.msebera.android:httpclient:4.4.1.2"
+    compile 'com.android.support:design:26.1.0'
 }

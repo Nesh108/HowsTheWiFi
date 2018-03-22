@@ -13,15 +13,15 @@ import fr.bmartel.speedtest.model.SpeedTestError;
 public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, SpeedTestReport>
 {
 
-    private MainActivity mainActivity;
+    private MainFragment mainFragment;
     private ReportType reportType;
     private int maxDuration;
     private Random rng;
 
-    public SpeedTestTask(MainActivity mainActivity, ReportType rt, int maxDuration)
+    public SpeedTestTask(MainFragment mainFragment, ReportType rt, int maxDuration)
     {
         reportType = rt;
-        this.mainActivity = mainActivity;
+        this.mainFragment = mainFragment;
         this.maxDuration = maxDuration;
         rng = new Random();
     }
@@ -39,14 +39,14 @@ public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, S
             @Override
             public void onCompletion(SpeedTestReport report)
             {
-                mainActivity.setReportStatus(reportType, ReportStatus.COMPLETED);
+                mainFragment.setReportStatus(reportType, ReportStatus.COMPLETED);
             }
 
             @Override
             public void onError(SpeedTestError speedTestError, String errorMessage)
             {
                 Log.e("speedtest", errorMessage);
-                mainActivity.setReportStatus(reportType, ReportStatus.FAILED);
+                mainFragment.setReportStatus(reportType, ReportStatus.FAILED);
             }
 
             @Override
@@ -96,10 +96,10 @@ public class SpeedTestTask extends AsyncTask<SpeedTestReport, SpeedTestReport, S
     {
         if (reportType == ReportType.DOWNLOAD)
         {
-            mainActivity.setDownloadText(reports[0].getTransferRateBit().floatValue());
+            mainFragment.setDownloadText(reports[0].getTransferRateBit().floatValue());
         } else
         {
-            mainActivity.setUploadText(reports[0].getTransferRateBit().floatValue());
+            mainFragment.setUploadText(reports[0].getTransferRateBit().floatValue());
         }
     }
 
