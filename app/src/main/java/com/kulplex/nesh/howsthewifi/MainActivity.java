@@ -2,6 +2,7 @@ package com.kulplex.nesh.howsthewifi;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -17,9 +18,15 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -70,6 +77,8 @@ public class MainActivity extends AppCompatActivity
     private float pingValue;
     private int packetLossValue;
     private Location mLastLocation;
+    private String locationName;
+    private String locationComments;
     private FusedLocationProviderClient mFusedLocationClient;
     LocationCallback mLocationCallback = new LocationCallback()
     {
@@ -175,43 +184,7 @@ public class MainActivity extends AppCompatActivity
 
         if (downloadValue >= 0 && uploadValue >= 0)
         {
-            AsyncHttpClient client = new AsyncHttpClient();
-            RequestParams params = new RequestParams();
-            params.put("latitude", mLastLocation.getLatitude());
-            params.put("longitude", mLastLocation.getLongitude());
-            params.put("accuracy", mLastLocation.getAccuracy());
-            params.put("download", downloadValue);
-            params.put("upload", uploadValue);
-            params.put("ping", pingValue);
-            params.put("packet_loss", packetLossValue);
-            params.put("name", "Hotel Last Vegas");
-            params.put("comments", "Viva los sweetos indianos");
-
-            client.post("http://192.168.100.12:8000/api/wifispeed/create", params,
-                        new JsonHttpResponseHandler()
-                        {
-                            @Override
-                            public void onSuccess(int statusCode, Header[] headers, JSONObject response)
-                            {
-                                // If the response is JSONObject instead of expected JSONArray
-                                try
-                                {
-                                    Toast.makeText(getBaseContext(), "Successful: " + response.get(
-                                            "wifispeed").toString(), Toast.LENGTH_SHORT).show();
-                                } catch (JSONException e)
-                                {
-                                    Toast.makeText(getBaseContext(), "Not so successful, eh?",
-                                                   Toast.LENGTH_SHORT).show();
-                                }
-                            }
-
-                            @Override
-                            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse)
-                            {
-                                Toast.makeText(getBaseContext(), "Failure :( : " + throwable.toString(), Toast.LENGTH_LONG).show();
-                                Log.d("wifispeeds", throwable.toString());
-                            }
-                        });
+            showNotesDialog();
         } else
         {
             Toast.makeText(this, "Something is not correct", Toast.LENGTH_SHORT).show();
@@ -552,5 +525,168 @@ public class MainActivity extends AppCompatActivity
         {
 
         }
+    }
+
+    void showNotesDialog()
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Location Information");
+        builder.setMessage("Enter location information:");
+        Context context = getBaseContext();
+        LinearLayout layout = new LinearLayout(context);
+        layout.setOrientation(LinearLayout.VERTICAL);
+
+        // Set up the input
+        final EditText nameEditText = new EditText(this);
+        nameEditText.setHint("Name (e.g. 'Hotel California')");
+        final EditText commentsEditText = new EditText(this);
+        commentsEditText.setHint("Comment (e.g. 'good WiFi, noisy cafe')");
+        nameEditText.setInputType(InputType.TYPE_CLASS_TEXT);
+        layout.addView(nameEditText);
+
+        commentsEditText.setInputType(InputType.TYPE_CLASS_TEXT);
+        layout.addView(commentsEditText);
+
+        builder.setView(layout);
+
+        // Set up the buttons
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int which)
+            {
+                locationName = nameEditText.getText().toString();
+                locationComments = commentsEditText.getText().toString();
+
+                if(!locationName.isEmpty() && !locationComments.isEmpty())
+                {
+                    uploadWifiSpeed();
+                }
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int which)
+            {
+                dialog.cancel();
+            }
+        });
+
+        final AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
+
+            @Override
+            public void onShow(DialogInterface dialog) {
+                ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+            }
+        });
+
+        // Now set the textchange listener for edittext
+        nameEditText.addTextChangedListener(new TextWatcher() {
+
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2)
+            {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2)
+            {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable)
+            {
+                // Check if edittext is empty
+                if (nameEditText.getText().toString().isEmpty() || commentsEditText.getText().toString().isEmpty()) {
+                    // Disable ok button
+                    dialog.getButton(
+                            AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                } else {
+                    // Something into edit text. Enable the button.
+                    dialog.getButton(
+                            AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                }
+            }
+        });
+
+        // Now set the textchange listener for edittext
+        commentsEditText.addTextChangedListener(new TextWatcher() {
+
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2)
+            {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2)
+            {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable)
+            {
+                // Check if edittext is empty
+                if (nameEditText.getText().toString().isEmpty() || commentsEditText.getText().toString().isEmpty()) {
+                    // Disable ok button
+                    dialog.getButton(
+                            AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                } else {
+                    // Something into edit text. Enable the button.
+                    dialog.getButton(
+                            AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                }
+            }
+        });
+
+        dialog.show();
+
+    }
+
+    void uploadWifiSpeed()
+    {
+        AsyncHttpClient client = new AsyncHttpClient();
+        RequestParams params = new RequestParams();
+        params.put("latitude", mLastLocation.getLatitude());
+        params.put("longitude", mLastLocation.getLongitude());
+        params.put("accuracy", mLastLocation.getAccuracy());
+        params.put("download", downloadValue);
+        params.put("upload", uploadValue);
+        params.put("ping", pingValue);
+        params.put("packet_loss", packetLossValue);
+        params.put("name", locationName);
+        params.put("comments", locationComments);
+
+        client.post(getString(R.string.post_api_url), params,
+                    new JsonHttpResponseHandler()
+                    {
+                        @Override
+                        public void onSuccess(int statusCode, Header[] headers, JSONObject response)
+                        {
+                            // If the response is JSONObject instead of expected JSONArray
+                            try
+                            {
+                                Toast.makeText(getBaseContext(), "Successful: " + response.get(
+                                        "wifispeed").toString(), Toast.LENGTH_SHORT).show();
+                            } catch (JSONException e)
+                            {
+                                Toast.makeText(getBaseContext(), "Not so successful, eh?",
+                                               Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse)
+                        {
+                            Toast.makeText(getBaseContext(), "Failure :( : " + throwable.toString(),
+                                           Toast.LENGTH_LONG).show();
+                            Log.d("wifispeeds", throwable.toString());
+                        }
+                    });
     }
 }
