@@ -15,6 +15,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.JsonHttpResponseHandler;
@@ -47,14 +48,30 @@ public class MapFragment extends Fragment implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap)
     {
         mMap = googleMap;
-        GetAllLocationsPins();
+        mMap.setOnCameraMoveStartedListener(new GoogleMap.OnCameraMoveStartedListener()
+        {
+            @Override
+            public void onCameraMoveStarted(int reason)
+            {
+                if (reason == REASON_GESTURE)
+                {
+                    GetAllLocationsPins(mMap.getProjection().getVisibleRegion().latLngBounds);
+                }
+            }
+        });
+        GetAllLocationsPins(mMap.getProjection().getVisibleRegion().latLngBounds);
     }
 
-    void GetAllLocationsPins()
+    void GetAllLocationsPins(LatLngBounds curScreen)
     {
         AsyncHttpClient client = new AsyncHttpClient();
+        RequestParams params = new RequestParams();
+        params.put("min_latitude", curScreen.southwest.latitude);
+        params.put("max_latitude", curScreen.northeast.latitude);
+        params.put("min_longitude", curScreen.southwest.longitude);
+        params.put("max_longitude", curScreen.northeast.longitude);
 
-        client.get(getString(R.string.get_api_url), new JsonHttpResponseHandler()
+        client.get(getString(R.string.get_api_url), params, new JsonHttpResponseHandler()
         {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONArray response)
@@ -65,8 +82,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse)
             {
-                Toast.makeText(getContext(), "Failure :( : " + throwable.toString(),
-                               Toast.LENGTH_LONG).show();
                 Log.d("wifispeeds", throwable.toString());
             }
         });
@@ -74,14 +89,16 @@ public class MapFragment extends Fragment implements OnMapReadyCallback
 
     void AddPinsToMap(JSONArray locationsJson)
     {
+        mMap.clear();
         for (int i = 0; i < locationsJson.length(); i++)
         {
             try
             {
                 JSONObject loc = locationsJson.getJSONObject(i);
-                LatLng pin = new LatLng(loc.getDouble("latitude"), loc.getDouble("latitude"));
-                mMap.addMarker(new MarkerOptions().position(pin).title(loc.getString("name")));
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(pin));
+                LatLng pin = new LatLng(loc.getDouble("latitude"), loc.getDouble("longitude"));
+                mMap.addMarker(
+                        new MarkerOptions().position(pin).title(loc.getString("name")).snippet(
+                                loc.getString("comments")));
             } catch (JSONException e)
             {
                 e.printStackTrace();
