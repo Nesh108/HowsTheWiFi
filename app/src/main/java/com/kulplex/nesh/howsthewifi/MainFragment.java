@@ -13,14 +13,9 @@ import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Looper;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.InputType;
-import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
@@ -30,11 +25,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
@@ -46,21 +37,16 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import cz.msebera.android.httpclient.Header;
 
-import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 
 public class MainFragment extends Fragment
 {
-
-    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
     private Context rootContext;
     private View rootView;
     private TextView pingTextView;
@@ -79,50 +65,36 @@ public class MainFragment extends Fragment
     private ReportStatus downloadTaskStatus;
     private ReportStatus uploadTaskStatus;
     private ReportStatus addressTaskStatus;
-    private LocationRequest mLocationRequest;
+
     // Form data
     private float downloadValue;
     private float uploadValue;
     private float pingValue;
     private int packetLossValue;
-    private Location mLastLocation;
+
     private String locationName;
     private String locationComments;
-    private FusedLocationProviderClient mFusedLocationClient;
-    LocationCallback mLocationCallback = new LocationCallback()
+    private Location mLastLocation;
+
+    private boolean isLocationAllowed = true;
+
+    public void locationHandler(LocationResult locationResult)
     {
-        @Override
-        public void onLocationResult(LocationResult locationResult)
+        isLocationAllowed = locationResult != null;
+
+        if (isLocationAllowed)
         {
             for (Location location : locationResult.getLocations())
             {
+                mLastLocation = location;
                 Log.e("MapsActivity",
                       "Location: " + location.getLatitude() + "," + location.getLongitude());
-                Geocoder geocoder = new Geocoder(getContext(), Locale.getDefault());
-                try
-                {
-                    List<Address> addresses = geocoder.getFromLocation(location.getLatitude(),
-                                                                       location.getLongitude(), 1);
-                    if (addresses.size() > 0)
-                    {
-                        setTextViewAddress(addresses.get(0));
-                    } else
-                    {
-                        setTextViewAddress(location);
-                    }
-                    Log.e("speedtest", "" + new Date(location.getTime()).toString());
-                    Log.e("speedtest", "" + location.getAccuracy() + "m");
-
-                    setReportStatus(ReportType.GPS, ReportStatus.COMPLETED);
-                } catch (IOException e)
-                {
-                    e.printStackTrace();
-                    setReportStatus(ReportType.GPS, ReportStatus.FAILED);
+                if(checkConnectionBtn != null) {
+                    checkConnectionBtn.setEnabled(true);
                 }
-                mLastLocation = location;
             }
         }
-    };
+    }
 
     public void onClickAddress()
     {
@@ -157,6 +129,7 @@ public class MainFragment extends Fragment
         });
 
         checkConnectionBtn = rootView.findViewById(R.id.checkConnectionButton);
+        checkConnectionBtn.setEnabled(mLastLocation != null);
         checkConnectionBtn.setOnClickListener(new View.OnClickListener()
         {
             @Override
@@ -180,9 +153,6 @@ public class MainFragment extends Fragment
         uploadLabel = rootView.findViewById(R.id.uploadLabel);
         downloadLabel = rootView.findViewById(R.id.downloadLabel);
         addressLabel = rootView.findViewById(R.id.addressLabel);
-
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(rootContext);
-
         return rootView;
     }
 
@@ -238,6 +208,9 @@ public class MainFragment extends Fragment
         uploadTextView.setText("-");
         addressTextView.setText("-");
 
+        if(mLastLocation != null) {
+            getAddress();
+        }
         PingTask pingTask = new PingTask(5, 5);
         SpeedTestTask downloadTask = new SpeedTestTask(this, ReportType.DOWNLOAD, 8000);
         SpeedTestTask uploadTask = new SpeedTestTask(this, ReportType.UPLOAD, 8000);
@@ -253,9 +226,30 @@ public class MainFragment extends Fragment
             downloadTask.execute();
             uploadTask.execute();
         }
-        if (mLocationRequest == null)
+    }
+
+    private void getAddress()
+    {
+        Geocoder geocoder = new Geocoder(rootContext, Locale.getDefault());
+        try
         {
-            setupLocationManager(1000);
+            List<Address> addresses = geocoder.getFromLocation(mLastLocation.getLatitude(),
+                                                               mLastLocation.getLongitude(), 1);
+            if (addresses.size() > 0)
+            {
+                setTextViewAddress(addresses.get(0));
+            } else
+            {
+                setTextViewAddress(mLastLocation);
+            }
+            Log.e("speedtest", "" + new Date(mLastLocation.getTime()).toString());
+            Log.e("speedtest", "" + mLastLocation.getAccuracy() + "m");
+
+            setReportStatus(ReportType.GPS, ReportStatus.COMPLETED);
+        } catch (IOException e)
+        {
+            e.printStackTrace();
+            setReportStatus(ReportType.GPS, ReportStatus.FAILED);
         }
     }
 
@@ -307,7 +301,7 @@ public class MainFragment extends Fragment
         uploadTextView.setText(round(f * 0.001f, 1) + "Kb/s");
     }
 
-    protected float round(float value, int precision)
+    protected static float round(float value, int precision)
     {
         float prec = 10 * precision;
         return (int) (value * prec) / (prec);
@@ -383,111 +377,14 @@ public class MainFragment extends Fragment
             checkConnectionBtn.setEnabled(true);
             if (downloadTaskStatus == ReportStatus.COMPLETED && uploadTaskStatus == ReportStatus.COMPLETED && addressTaskStatus == ReportStatus.COMPLETED)
             {
-                sendBtn.setEnabled(true);
-            }
-        }
-    }
-
-    private void setupLocationManager(int intervalUpdate)
-    {
-        mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(intervalUpdate); // two minute interval
-        mLocationRequest.setFastestInterval(intervalUpdate);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
-        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-        {
-            if (ContextCompat.checkSelfPermission(rootContext,
-                                                  Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
-            {
-                //Location Permission already granted
-                mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback,
-                                                            Looper.myLooper());
-            } else
-            {
-                //Request Location Permission
-                checkLocationPermission();
-            }
-        } else
-        {
-            mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback,
-                                                        Looper.myLooper());
-        }
-    }
-
-    private void checkLocationPermission()
-    {
-        if (ContextCompat.checkSelfPermission(rootContext,
-                                              Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
-        {
-            // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(),
-                                                                    Manifest.permission.ACCESS_FINE_LOCATION))
-            {
-
-                // Show an explanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-                new AlertDialog.Builder(rootContext).setTitle(
-                        "Location Permission Needed").setMessage(
-                        "This app needs the Location permission, please accept to use location functionality").setPositiveButton(
-                        "OK", new DialogInterface.OnClickListener()
-                        {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i)
-                            {
-                                //Prompt the user once explanation has been shown
-                                ActivityCompat.requestPermissions(getActivity(), new String[]{
-                                                                          Manifest.permission.ACCESS_FINE_LOCATION},
-                                                                  MY_PERMISSIONS_REQUEST_LOCATION);
-                            }
-                        }).create().show();
-            } else
-            {
-                // No explanation needed, we can request the permission.
-                ActivityCompat.requestPermissions(getActivity(), new String[]{
-                        Manifest.permission.ACCESS_FINE_LOCATION}, MY_PERMISSIONS_REQUEST_LOCATION);
-            }
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults)
-    {
-        switch (requestCode)
-        {
-            case MY_PERMISSIONS_REQUEST_LOCATION:
-            {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                if (isLocationAllowed)
                 {
-
-                    // permission was granted, yay! Do the
-                    // location-related task you need to do.
-                    if (ContextCompat.checkSelfPermission(rootContext,
-                                                          Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
-                    {
-
-                        mFusedLocationClient.requestLocationUpdates(mLocationRequest,
-                                                                    mLocationCallback,
-                                                                    Looper.myLooper());
-                    }
-                } else
-                {
-
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
-                    Toast.makeText(rootContext, "permission denied", Toast.LENGTH_LONG).show();
-                    mLocationRequest = null;
-                    setReportStatus(ReportType.GPS, ReportStatus.FAILED);
+                    sendBtn.setEnabled(true);
                 }
-                return;
             }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
         }
     }
+
 
     private void setTextViewAddress(Address address)
     {
