@@ -11,6 +11,8 @@
     <string name="title_activity_main">WiFi Speeds</string>
     <string name="title_activity_maps">Map</string>
     <string name="title_activity_settings">Settings</string>
-    <string name="post_api_url">http://192.168.43.35:8000/api/wifispeed/create</string>
-    <string name="get_api_url">http://192.168.43.35:8000/api/wifispeed/</string>
+    <string name="post_api_url">http://192.168.1.8:8000/api/wifispeed/create</string>
+    <string name="get_api_url">http://192.168.1.8:8000/api/wifispeed/</string>
+    <string name="user_settings_keystore">howswifi_settings</string>
+    <string name="pins_key">howswifi_pins</string>
 </resources>

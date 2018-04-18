@@ -87,8 +87,6 @@ public class MainFragment extends Fragment
             for (Location location : locationResult.getLocations())
             {
                 mLastLocation = location;
-                Log.e("MapsActivity",
-                      "Location: " + location.getLatitude() + "," + location.getLongitude());
                 if(checkConnectionBtn != null) {
                     checkConnectionBtn.setEnabled(true);
                 }

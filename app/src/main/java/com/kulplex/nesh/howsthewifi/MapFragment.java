@@ -1,7 +1,9 @@
 package com.kulplex.nesh.howsthewifi;
 
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -24,6 +26,11 @@ import com.loopj.android.http.RequestParams;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import cz.msebera.android.httpclient.Header;
 
@@ -84,15 +91,79 @@ public class MapFragment extends Fragment implements OnMapReadyCallback
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONArray response)
             {
+                UpdateOfflinePins(response);
                 AddPinsToMap(response);
             }
 
             @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse)
+            public void onFailure(int statusCode, Header[] headers, String error, Throwable throwable)
             {
-                Log.d("wifispeeds", throwable.toString());
+                AddPinsToMap(GetStoredPins());
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject json)
+            {
+                AddPinsToMap(GetStoredPins());
             }
         });
+    }
+
+    void UpdateOfflinePins(JSONArray pins)
+    {
+        SharedPreferences settings = getContext().getSharedPreferences(
+                getString(R.string.user_settings_keystore), 0);
+
+        String storedPinsString = settings.getString(getString(R.string.pins_key), "[]");
+        try
+        {
+            JSONArray storedPins = new JSONArray(storedPinsString);
+            JSONArray updatedPins = ConcatArray(storedPins, pins);
+
+            SharedPreferences.Editor editor = settings.edit();
+            editor.putString(getString(R.string.pins_key), updatedPins.toString());
+
+            editor.apply();
+        } catch (JSONException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    JSONArray GetStoredPins()
+    {
+        SharedPreferences settings = getContext().getSharedPreferences(
+                getString(R.string.user_settings_keystore), 0);
+
+        String storedPinsString = settings.getString(getString(R.string.pins_key), "[]");
+        try
+        {
+            return new JSONArray(storedPinsString);
+        } catch (JSONException e)
+        {
+            e.printStackTrace();
+        }
+        return new JSONArray();
+    }
+
+    private JSONArray ConcatArray(JSONArray... arrs) throws JSONException
+    {
+        JSONArray result = new JSONArray();
+        for (JSONArray arr : arrs)
+        {
+            for (int i = 0; i < arr.length(); i++)
+            {
+                JSONObject pin = (JSONObject) arr.get(i);
+                if(!PinExists(result, pin.getInt("id"))) {
+                    result.put(pin);
+                }
+            }
+        }
+        return result;
+    }
+
+    private boolean PinExists(JSONArray jsonArray, int id){
+        return jsonArray.toString().contains("\"id\":\"" + id + "\"");
     }
 
     void AddPinsToMap(JSONArray locationsJson)
@@ -111,7 +182,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback
                 LatLng pin = new LatLng(loc.getDouble("latitude"), loc.getDouble("longitude"));
                 mMap.addMarker(new MarkerOptions().position(pin).icon(
                         BitmapDescriptorFactory.defaultMarker(
-                                getColourFromSpeed(loc.getDouble("download")))).title(
+                                GetColourFromSpeed(loc.getDouble("download")))).title(
                         loc.getString("name")).snippet("Download Speed: " + MainFragment.round(
                         (float) (loc.getDouble("download")) * 0.001f,
                         1) + " Kb/s | Upload Speed: " + MainFragment.round(
@@ -143,7 +214,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback
 
     }
 
-    private float getColourFromSpeed(double downloadSpeed)
+    private float GetColourFromSpeed(double downloadSpeed)
     {
         for (int i = 0; i < connectionRanges.length; i++)
         {
